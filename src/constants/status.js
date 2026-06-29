@@ -1,0 +1,22 @@
+export const STATUS = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+  DELIVERED: "Delivered",
+  SHIPPED: "Shipped",
+  PROCESSING: "Processing",
+  REJECTED: "Rejected",
+  NEW: "New",
+  ACTIVE: "Active",
+  UPCOMING: "Upcoming",
+  CANCELLED: "Cancelled",
+  PARTIAL: "Partial",
+  OUT_OF_STOCK: "Out of Stock",
+  IN_STOCK: "In Stock",
+  LOW_STOCK: "Low Stock",
+  PRE_ORDER: "Pre-Order",
+  SCHEDULED: "Scheduled",
+  UNDER_REVIEW: "Under Review",
+  AWAITING_VENDOR: "Awaiting Vendor"
+};

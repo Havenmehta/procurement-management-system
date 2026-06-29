@@ -17,6 +17,14 @@ const ALL_COLUMNS = [
   { key: "updatedAt", label: "Updated At" },
 ];
 
+const SORT_FIELDS = [
+  { key: "id", label: "Ref ID" },
+  { key: "title", label: "Title" },
+  { key: "requesterName", label: "Requester Name" },
+  { key: "requestedAt", label: "Requested At" },
+  { key: "updatedAt", label: "Updated At" },
+];
+
 const IntakeTable = memo(function IntakeTable({ data }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "requestedAt", direction: "desc" });
@@ -27,12 +35,26 @@ const IntakeTable = memo(function IntakeTable({ data }) {
   );
   const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
   const columnMenuRef = useRef(null);
+
+  const [filters, setFilters] = useState({ status: [], intakeRequestType: [], buyerName: [] });
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const filterMenuRef = useRef(null);
+
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const sortMenuRef = useRef(null);
+
   const itemsPerPage = 5;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (columnMenuRef.current && !columnMenuRef.current.contains(e.target)) {
         setIsColumnMenuOpen(false);
+      }
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target)) {
+        setIsFilterMenuOpen(false);
+      }
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) {
+        setIsSortMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -51,16 +73,50 @@ const IntakeTable = memo(function IntakeTable({ data }) {
     setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const filterOptions = useMemo(() => {
+    const unique = (key) => [...new Set(data.map((item) => item[key]))].filter(Boolean);
+    return {
+      status: unique("status"),
+      intakeRequestType: unique("intakeRequestType"),
+      buyerName: unique("buyerName"),
+    };
+  }, [data]);
+
+  const toggleFilter = (field, value) => {
+    setFilters((prev) => {
+      const current = prev[field];
+      const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+      return { ...prev, [field]: next };
+    });
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({ status: [], intakeRequestType: [], buyerName: [] });
+    setCurrentPage(1);
+  };
+
+  const activeFilterCount =
+    filters.status.length + filters.intakeRequestType.length + filters.buyerName.length;
+
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       const term = searchTerm.toLowerCase();
-      return (
+      const matchesSearch =
         item.id.toLowerCase().includes(term) ||
         item.title.toLowerCase().includes(term) ||
-        item.requesterName.toLowerCase().includes(term)
-      );
+        item.requesterName.toLowerCase().includes(term);
+
+      const matchesStatus = filters.status.length === 0 || filters.status.includes(item.status);
+      const matchesType =
+        filters.intakeRequestType.length === 0 || filters.intakeRequestType.includes(item.intakeRequestType);
+      const matchesBuyer = filters.buyerName.length === 0 || filters.buyerName.includes(item.buyerName);
+
+      return matchesSearch && matchesStatus && matchesType && matchesBuyer;
     });
-  }, [data, searchTerm]);
+  }, [data, searchTerm, filters]);
 
   const sortedData = useMemo(() => {
     const sorted = [...filteredData];
@@ -141,25 +197,131 @@ const IntakeTable = memo(function IntakeTable({ data }) {
           />
         </div>
         <div className="flex items-center space-x-3">
-          {/* Filter (placeholder) */}
-          <button
-            type="button"
-            aria-label="Filter"
-            className="flex items-center text-slate-600 bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-sm hover:bg-slate-50 transition-colors text-sm font-medium"
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </button>
+          {/* Filter */}
+          <div className="relative" ref={filterMenuRef}>
+            <button
+              type="button"
+              aria-label="Filter"
+              onClick={() => setIsFilterMenuOpen((prev) => !prev)}
+              className="flex items-center text-slate-600 bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-sm hover:bg-slate-50 transition-colors text-sm font-medium"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-[11px] font-semibold rounded-full bg-blue-600 text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            {isFilterMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-md shadow-lg z-10 py-1.5">
+                <div className="px-3 py-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</span>
+                </div>
+                {filterOptions.status.map((value) => (
+                  <label
+                    key={value}
+                    className="flex items-center px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filters.status.includes(value)}
+                      onChange={() => toggleFilter("status", value)}
+                      className="mr-2.5 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20"
+                    />
+                    {value}
+                  </label>
+                ))}
 
-          {/* Sort (placeholder) */}
-          <button
-            type="button"
-            aria-label="Sort"
-            className="flex items-center text-slate-600 bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-sm hover:bg-slate-50 transition-colors text-sm font-medium"
-          >
-            <ArrowDownUp className="w-4 h-4 mr-2" />
-            Sort
-          </button>
+                <div className="border-t border-slate-100 my-1.5" />
+                <div className="px-3 py-1.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Intake Request Type</span>
+                </div>
+                {filterOptions.intakeRequestType.map((value) => (
+                  <label
+                    key={value}
+                    className="flex items-center px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filters.intakeRequestType.includes(value)}
+                      onChange={() => toggleFilter("intakeRequestType", value)}
+                      className="mr-2.5 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20"
+                    />
+                    {value}
+                  </label>
+                ))}
+
+                <div className="border-t border-slate-100 my-1.5" />
+                <div className="px-3 py-1.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Buyer Name</span>
+                </div>
+                {filterOptions.buyerName.map((value) => (
+                  <label
+                    key={value}
+                    className="flex items-center px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filters.buyerName.includes(value)}
+                      onChange={() => toggleFilter("buyerName", value)}
+                      className="mr-2.5 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20"
+                    />
+                    {value}
+                  </label>
+                ))}
+
+                <div className="border-t border-slate-100 mt-1.5 pt-1.5">
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    disabled={activeFilterCount === 0}
+                    className="w-full text-left px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sort */}
+          <div className="relative" ref={sortMenuRef}>
+            <button
+              type="button"
+              aria-label="Sort"
+              onClick={() => setIsSortMenuOpen((prev) => !prev)}
+              className="flex items-center text-slate-600 bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-sm hover:bg-slate-50 transition-colors text-sm font-medium"
+            >
+              <ArrowDownUp className="w-4 h-4 mr-2" />
+              Sort
+            </button>
+            {isSortMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-md shadow-lg z-10 py-1.5">
+                <div className="px-3 py-1.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sort By</span>
+                </div>
+                {SORT_FIELDS.map((field) => (
+                  <button
+                    key={field.key}
+                    type="button"
+                    onClick={() => handleSort(field.key)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-slate-50 transition-colors",
+                      sortConfig.key === field.key ? "text-blue-600 font-medium" : "text-slate-700"
+                    )}
+                  >
+                    <span>{field.label}</span>
+                    {sortConfig.key === field.key && (
+                      <span className="text-xs text-slate-400">
+                        {sortConfig.direction === "asc" ? "Asc" : "Desc"}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Column visibility */}
           <div className="relative" ref={columnMenuRef}>
